@@ -8,6 +8,20 @@ To install `hostpath-provisioner` controller:
 kubectl apply -f install/.
 ```
 
+You can use also `kustomize` to install the package directly as
+
+```bash
+ kustomize build install | kubectl apply -f -
+```
+
+or by reference in your overlay as:
+
+```yaml
+# kustomization.yaml
+bases:
+  - github.com/appwavelets/hostpath-provisioner//install?ref=master
+```
+
 The previous command will install the controller and it RBAC. Further it will install a storage class `hostpath` with `reclaimPolicy: Delete`.
 
 Example of usage:
