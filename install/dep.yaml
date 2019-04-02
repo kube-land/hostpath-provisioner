@@ -1,0 +1,37 @@
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: hostpath-provisioner
+  namespace: kube-system
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: hostpath-provisioner
+    spec:
+      serviceAccountName: hostpath-provisioner
+      containers:
+        - name: hostpath-provisioner
+          image: docker.io/abdullahalmariah/hostpath-provisioner
+          imagePullPolicy: "Always"
+          command:
+            - /hostpath-provisioner
+          args:
+            - -logtostderr=true
+            - -v=2
+            - -pv-directory=/mnt/hostpath-provisioner
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: pv-volume
+              mountPath: /mnt/hostpath-provisioner
+      volumes:
+        - name: pv-volume
+          hostPath:
+            path: /mnt/hostpath-provisioner
