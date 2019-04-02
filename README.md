@@ -48,6 +48,8 @@ You can configure the host directory where the `hostpath-provisioner` will creat
 -pv-directory=/path/to/directory
 ```
 
+**Warning:** The default value of `-pv-directory` is `/tmp/hostpath-provisioner`. Using `/tmp/...` directory could be risky for persisting volume; it will be auto-cleaned by the OS.
+
 ## Build
 
 To build `hostpath-provisioner`:
