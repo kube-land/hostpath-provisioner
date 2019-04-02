@@ -22,23 +22,7 @@ bases:
   - github.com/appwavelets/hostpath-provisioner//install?ref=master
 ```
 
-The previous command will install the controller and it RBAC. Further it will install a storage class `hostpath` with `reclaimPolicy: Delete`.
-
-Example of usage:
-
-```yaml
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: hostpath-pvc
-spec:
-  storageClassName: "hostpath"
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
-```
+The previous command will install the controller and it RBAC.
 
 ## Config
 
@@ -47,6 +31,9 @@ You can configure the host directory where the `hostpath-provisioner` will creat
 ```
 -pv-directory=/path/to/directory
 ```
+
+Then create a storage class with `provisioner: appwavelets.com/hostpath` (check examples).
+
 
 **Warning:** The default value of `-pv-directory` is `/tmp/hostpath-provisioner`. Using `/tmp/...` directory could be risky for persisting volume; it will be auto-cleaned by the OS.
 
