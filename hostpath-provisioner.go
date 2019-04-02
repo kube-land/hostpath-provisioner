@@ -65,7 +65,7 @@ var _ controller.Provisioner = &hostPathProvisioner{}
 func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
 	path := path.Join(p.pvDir, options.PVName)
 
-	if err := os.MkdirAll(path, 0777); err != nil {
+	if err := os.MkdirAll(path, 0750); err != nil {
 		return nil, err
 	}
 
