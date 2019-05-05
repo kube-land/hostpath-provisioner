@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"errors"
 	"flag"
 	"os"
@@ -74,10 +73,14 @@ func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 		if err == nil {
 			err = p.quotaApplier.SetQuotaOnDir(path, quotaID, size.Value())
 			if err != nil {
-				fmt.Println(err)
+				os.RemoveAll(path)
+				klog.Errorf("Failed to set quota on directory %s: %v", path, err)
+				return nil, err
 			}
 		} else {
-			fmt.Println(err)
+			os.RemoveAll(path)
+			klog.Errorf("Failed to find a quota ID: %v", err)
+			return nil, err
 		}
 	}
 
