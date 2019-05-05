@@ -1,0 +1,44 @@
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: hostpath-provisioner
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: hostpath-provisioner
+  template:
+    metadata:
+      labels:
+        app: hostpath-provisioner
+    spec:
+      serviceAccountName: hostpath-provisioner
+      hostPID: true
+      containers:
+        - name: hostpath-provisioner
+          image: abdullahalmariah/hostpath-provisioner:latest
+          imagePullPolicy: "Always"
+          command:
+            - /usr/bin/hostpath-provisioner
+          args:
+            - -v=4
+            - -pv-directory=/mnt/disk/hostpath-provisioner
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: pv-volume
+              mountPath: /mnt/disk/hostpath-provisioner
+            - name: dev
+              mountPath: /dev/mapper/centos-disk
+          securityContext:
+            privileged: true
+      volumes:
+        - name: pv-volume
+          hostPath:
+            path: /mnt/disk/hostpath-provisioner
+        - name: dev
+          hostPath:
+            path: /dev/mapper/centos-disk

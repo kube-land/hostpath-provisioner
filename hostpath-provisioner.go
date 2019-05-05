@@ -1,30 +1,13 @@
-/*
-Copyright 2018 The Kubernetes Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package main
 
 import (
+	"fmt"
 	"errors"
 	"flag"
 	"os"
 	"path"
 	"syscall"
 
-	"github.com/golang/glog"
-	"k8s.io/klog"
 	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 
 	"k8s.io/api/core/v1"
@@ -32,6 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/klog"
+
+	"github.com/appwavelets/hostpath-provisioner/quota/common"
+	"github.com/appwavelets/hostpath-provisioner/quota"
 )
 
 const (
@@ -45,17 +32,20 @@ type hostPathProvisioner struct {
 	// Identity of this hostPathProvisioner, set to node's name. Used to identify
 	// "this" provisioner's PVs.
 	identity string
+
+	quotaApplier common.LinuxVolumeQuotaApplier
 }
 
 // NewHostPathProvisioner creates a new hostpath provisioner
 func NewHostPathProvisioner(pvDir string) controller.Provisioner {
 	nodeName := os.Getenv("NODE_NAME")
 	if nodeName == "" {
-		glog.Fatal("env variable NODE_NAME must be set so that this provisioner can identify itself")
+		klog.Fatal("env variable NODE_NAME must be set so that this provisioner can identify itself")
 	}
 	return &hostPathProvisioner{
 		pvDir:    pvDir,
 		identity: nodeName,
+		quotaApplier: quota.GetQuotaApplier(pvDir),
 	}
 }
 
@@ -63,10 +53,32 @@ var _ controller.Provisioner = &hostPathProvisioner{}
 
 // Provision creates a storage asset and returns a PV object representing it.
 func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
+
+	selectedNode := options.SelectedNode
+	nodeValue := selectedNode.Labels[v1.LabelHostname]
+
+	if nodeValue != p.identity {
+		return nil, &controller.IgnoredError{Reason: "node does not match persistent volume selected node"}
+	}
+
 	path := path.Join(p.pvDir, options.PVName)
 
-	if err := os.MkdirAll(path, 0750); err != nil {
+	if err := os.MkdirAll(path, 0777); err != nil {
 		return nil, err
+	}
+
+	size := options.PVC.Spec.Resources.Requests[v1.ResourceStorage]
+
+	if p.quotaApplier != nil {
+		quotaID, err := p.quotaApplier.FindAvailableQuota(path)
+		if err == nil {
+			err = p.quotaApplier.SetQuotaOnDir(path, quotaID, size.Value())
+			if err != nil {
+				fmt.Println(err)
+			}
+		} else {
+			fmt.Println(err)
+		}
 	}
 
 	pv := &v1.PersistentVolume{
@@ -87,6 +99,21 @@ func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 					Path: path,
 				},
 			},
+			NodeAffinity: &v1.VolumeNodeAffinity{
+				Required: &v1.NodeSelector{
+					NodeSelectorTerms: []v1.NodeSelectorTerm{
+						{
+							MatchExpressions: []v1.NodeSelectorRequirement{
+								{
+									Key:      v1.LabelHostname,
+									Operator: v1.NodeSelectorOpIn,
+									Values:   []string{nodeValue},
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -105,6 +132,11 @@ func (p *hostPathProvisioner) Delete(volume *v1.PersistentVolume) error {
 	}
 
 	path := path.Join(p.pvDir, volume.Name)
+
+	if p.quotaApplier != nil {
+		p.quotaApplier.ClearQuotaOnDir(path)
+	}
+
 	if err := os.RemoveAll(path); err != nil {
 		return err
 	}
@@ -115,49 +147,38 @@ func (p *hostPathProvisioner) Delete(volume *v1.PersistentVolume) error {
 func main() {
 	syscall.Umask(0)
 
-	flag.Set("alsologtostderr", "true")
-	flag.Set("stderrthreshold", "info")
-	flag.Set("v", "2")
+	var pvDir string
+  flag.StringVar(&pvDir, "pv-directory", "/tmp/hostpath-provisioner", "host directory where the `hostpath-provisioner` will create the persistent volumes")
 
-	pvDirPtr := flag.String("pv-directory", "/tmp/hostpath-provisioner", "Directory where hostPath PersistentVolumes created")
+	klog.InitFlags(nil)
 
+	flag.Set("logtostderr", "true")
 	flag.Parse()
-
-	klogFlags := flag.NewFlagSet("klog", flag.ExitOnError)
-	klog.InitFlags(klogFlags)
-
-	flag.CommandLine.VisitAll(func(f1 *flag.Flag) {
-		f2 := klogFlags.Lookup(f1.Name)
-		if f2 != nil {
-			value := f1.Value.String()
-			f2.Value.Set(value)
-		}
-	})
 
 	// Create an InClusterConfig and use it to create a client for the controller
 	// to use to communicate with Kubernetes
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		glog.Fatalf("Failed to create config: %v", err)
+		klog.Fatalf("Failed to create config: %v", err)
 	}
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		glog.Fatalf("Failed to create client: %v", err)
+		klog.Fatalf("Failed to create client: %v", err)
 	}
 
 	// The controller needs to know what the server version is because out-of-tree
 	// provisioners aren't officially supported until 1.5
 	serverVersion, err := clientset.Discovery().ServerVersion()
 	if err != nil {
-		glog.Fatalf("Error getting server version: %v", err)
+		klog.Fatalf("Error getting server version: %v", err)
 	}
 
 	// Create the provisioner: it implements the Provisioner interface expected by
 	// the controller
-	hostPathProvisioner := NewHostPathProvisioner(*pvDirPtr)
+	hostPathProvisioner := NewHostPathProvisioner(pvDir)
 
 	// Start the provision controller which will dynamically provision hostPath
 	// PVs
-	pc := controller.NewProvisionController(clientset, provisionerName, hostPathProvisioner, serverVersion.GitVersion)
+	pc := controller.NewProvisionController(clientset, provisionerName, hostPathProvisioner, serverVersion.GitVersion, controller.LeaderElection(false))
 	pc.Run(wait.NeverStop)
 }

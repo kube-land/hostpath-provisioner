@@ -13,7 +13,7 @@ rules:
     resources: ["persistentvolumes"]
     verbs: ["get", "list", "watch", "create", "update", "delete"]
   - apiGroups: [""]
-    resources: ["persistentvolumeclaims"]
+    resources: ["persistentvolumeclaims", "nodes"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["storage.k8s.io"]
     resources: ["storageclasses"]

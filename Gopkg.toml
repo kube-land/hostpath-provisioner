@@ -27,11 +27,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/golang/glog"
-
-[[constraint]]
-  branch = "master"
-  name = "sigs.k8s.io/sig-storage-lib-external-provisioner"
+  name = "golang.org/x/sys"
 
 [[constraint]]
   branch = "master"
@@ -44,6 +40,14 @@
 [[constraint]]
   branch = "master"
   name = "k8s.io/client-go"
+
+[[constraint]]
+  name = "k8s.io/klog"
+  version = "0.3.0"
+
+[[constraint]]
+  name = "sigs.k8s.io/sig-storage-lib-external-provisioner"
+  version = "3.1.0"
 
 [prune]
   go-tests = true
