@@ -25,7 +25,7 @@ import (
 
 	"golang.org/x/sys/unix"
 	"k8s.io/klog"
-	"github.com/appwavelets/hostpath-provisioner/quota/common"
+	"github.com/appspero/hostpath-provisioner/quota/common"
 )
 
 //  ext4fs empirically has a maximum quota size of 2^48 - 1 1KiB blocks (256 petabytes)

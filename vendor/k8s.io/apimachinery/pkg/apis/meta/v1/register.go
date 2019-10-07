@@ -94,13 +94,6 @@ func init() {
 		&PatchOptions{},
 	)
 
-	scheme.AddKnownTypes(SchemeGroupVersion,
-		&Table{},
-		&TableOptions{},
-		&PartialObjectMetadata{},
-		&PartialObjectMetadataList{},
-	)
-
 	// register manually. This usually goes through the SchemeBuilder, which we cannot use here.
 	utilruntime.Must(RegisterDefaults(scheme))
 }

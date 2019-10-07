@@ -2,6 +2,6 @@ kind: StorageClass
 apiVersion: storage.k8s.io/v1
 metadata:
   name: hostpath
-provisioner: appwavelets.com/hostpath
+provisioner: appspero.com/hostpath
 volumeBindingMode: WaitForFirstConsumer
 reclaimPolicy: Delete

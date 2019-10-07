@@ -2,9 +2,9 @@ package quota
 
 import (
 
-	"github.com/appwavelets/hostpath-provisioner/quota/common"
-	"github.com/appwavelets/hostpath-provisioner/quota/extfs"
-	"github.com/appwavelets/hostpath-provisioner/quota/xfs"
+	"github.com/appspero/hostpath-provisioner/quota/common"
+	"github.com/appspero/hostpath-provisioner/quota/extfs"
+	"github.com/appspero/hostpath-provisioner/quota/xfs"
 
 	"fmt"
 	"bufio"

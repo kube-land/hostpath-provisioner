@@ -15,7 +15,7 @@ or by reference in your overlay as:
 ```yaml
 # kustomization.yaml
 bases:
-  - github.com/appwavelets/hostpath-provisioner//install?ref=master
+  - github.com/appspero/hostpath-provisioner//install?ref=master
 ```
 
 The previous command will install the controller and it RBAC.
@@ -54,7 +54,7 @@ You can configure the host directory where the `hostpath-provisioner` will creat
 -pv-directory=/path/to/directory
 ```
 
-Then create a storage class with `provisioner: appwavelets.com/hostpath` (check examples).
+Then create a storage class with `provisioner: appspero.com/hostpath` (check examples).
 
 
 **Warning:** The default value of `-pv-directory` is `/tmp/hostpath-provisioner`. Using `/tmp/...` directory could be risky for persisting volume; it will be auto-cleaned by the OS.

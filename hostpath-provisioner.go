@@ -16,12 +16,12 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/klog"
 
-	"github.com/appwavelets/hostpath-provisioner/quota/common"
-	"github.com/appwavelets/hostpath-provisioner/quota"
+	"github.com/appspero/hostpath-provisioner/quota/common"
+	"github.com/appspero/hostpath-provisioner/quota"
 )
 
 const (
-	provisionerName = "appwavelets.com/hostpath"
+	provisionerName = "appspero.com/hostpath"
 )
 
 type hostPathProvisioner struct {
@@ -51,7 +51,7 @@ func NewHostPathProvisioner(pvDir string) controller.Provisioner {
 var _ controller.Provisioner = &hostPathProvisioner{}
 
 // Provision creates a storage asset and returns a PV object representing it.
-func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
+func (p *hostPathProvisioner) Provision(options controller.ProvisionOptions) (*v1.PersistentVolume, error) {
 
 	selectedNode := options.SelectedNode
 	nodeValue := selectedNode.Labels[v1.LabelHostname]
@@ -92,7 +92,7 @@ func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 			},
 		},
 		Spec: v1.PersistentVolumeSpec{
-			PersistentVolumeReclaimPolicy: options.PersistentVolumeReclaimPolicy,
+			PersistentVolumeReclaimPolicy: *options.StorageClass.ReclaimPolicy,
 			AccessModes:                   options.PVC.Spec.AccessModes,
 			Capacity: v1.ResourceList{
 				v1.ResourceName(v1.ResourceStorage): options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)],
