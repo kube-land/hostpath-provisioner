@@ -1,0 +1,76 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: hostpath-provisioner-build
+  namespace: ci
+spec:
+  ttlSecondsAfterFinished: 3600
+  entrypoint: hostpath-provisioner-build
+  arguments:
+    parameters:
+    - name: branch
+      value: master
+    - name: revision
+      value: master
+    - name: kubegitRepo
+      value: https://github.com/appspero/hostpath-provisioner.git
+  serviceAccountName: argo-appspero
+  templates:
+
+  - name: hostpath-provisioner-build
+    steps:
+    - - name: build-code
+        template: build-code
+
+  - name: build-code
+    inputs:
+      artifacts:
+      - name: hostpath-provisioner
+        path: /go/src/github.com/appspero/hostpath-provisioner
+        git:
+          repo: "{{workflow.parameters.kubegitRepo}}"
+          revision: "{{workflow.parameters.revision}}"
+    container:
+      image: "abdullahalmariah/cloud-tools:latest"
+      command: [sh, -c]
+      args: ["until docker ps; do sleep 3; done; echo ready &&
+              docker build -t appspero/hostpath-provisioner:latest . &&
+              echo $DOCKER_PASSWORD | docker login -u appspero --password-stdin &&
+              case {{workflow.parameters.branch}} in
+              refs/heads/master)
+                docker push appspero/hostpath-provisioner:latest
+                ;;
+              refs/tags/*)
+                RELEASE=$(echo {{workflow.parameters.branch}} | cut -c11-) &&
+                docker tag appspero/hostpath-provisioner:latest appspero/hostpath-provisioner:$RELEASE &&
+                docker push appspero/hostpath-provisioner:$RELEASE
+                ;;
+              esac"]
+      env:
+      - name: DOCKER_HOST
+        value: tcp://localhost:2375
+      - name: DOCKER_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: docker-secret-appspero
+            key: password
+      workingDir: /go/src/github.com/appspero/hostpath-provisioner
+      resources:
+        limits:
+          memory: 2Gi
+          cpu: 1
+        requests:
+          memory: 2Gi
+          cpu: 1
+    sidecars:
+    - name: dind
+      image: docker:17.10-dind
+      securityContext:
+        privileged: true
+      resources:
+        limits:
+          memory: 2Gi
+          cpu: 1
+        requests:
+          memory: 2Gi
+          cpu: 1

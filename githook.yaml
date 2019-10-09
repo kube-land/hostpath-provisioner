@@ -1,0 +1,17 @@
+apiVersion: kubegit.appspero.com/v1alpha1
+kind: GitHook
+metadata:
+  name: hostpath-provisioner
+  namespace: ci
+spec:
+  repository: https://github.com/appspero/hostpath-provisioner.git
+  branches:
+    - "*"
+  manifest: argo.yaml
+  timestampSuffix: true
+  argoWorkflow:
+    revisionParameterName: revision
+    branchParameterName: branch
+  notification:
+    slack: appspero-ci
+    github: appspero-robot
