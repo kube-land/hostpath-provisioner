@@ -16,7 +16,7 @@ spec:
       hostPID: true
       containers:
         - name: hostpath-provisioner
-          image: appspero/hostpath-provisioner:1.0.0
+          image: appspero/hostpath-provisioner:1.0.1
           imagePullPolicy: "Always"
           command:
             - /usr/bin/hostpath-provisioner
